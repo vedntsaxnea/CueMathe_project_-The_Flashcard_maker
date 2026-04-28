@@ -1,4 +1,5 @@
 import styles from "./page.module.css";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -17,10 +18,12 @@ export default function Home() {
             Science-backed algorithms to ensure you never forget what you learn.
           </p>
           <div className={styles.ctas}>
-            <button className={styles.primary}>
-              Start Learning Now
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
-            </button>
+            <Link href="/upload" style={{ textDecoration: 'none' }}>
+              <button className={styles.primary}>
+                Start Learning Now
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+              </button>
+            </Link>
             <button className={styles.secondary}>View Documentation</button>
           </div>
         </section>

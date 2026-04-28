@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import OpenAI from 'openai';
-import pdfParse from 'pdf-parse';
+import { GoogleGenAI } from '@google/genai';
+import pdfParse from 'pdf-parse-new';
 
 // Initialize our database and AI clients
 const prisma = new PrismaClient();
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 export async function POST(request: Request) {
@@ -23,8 +23,9 @@ export async function POST(request: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 3. Parse the PDF text
+    // 2. Extract Text from PDF
     const pdfData = await pdfParse(buffer);
+    const text = pdfData.text;
     let textContent = pdfData.text;
 
     // Optional: Log the text length to ensure it worked
@@ -36,37 +37,35 @@ export async function POST(request: Request) {
       textContent = textContent.substring(0, 20000);
     }
 
-    // 4. Send the text to OpenAI to generate flashcards
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      // Force the AI to reply ONLY with a JSON object
-      response_format: { type: "json_object" }, 
-      messages: [
-        { 
-          role: "system", 
-          content: `You are an expert tutor creating study materials. 
-          Extract comprehensive flashcards from the provided text. 
-          Cover key concepts, definitions, relationships, and edge cases. 
-          Do NOT create shallow, one-word answer cards. Explanations should be clear.
-          
-          You MUST respond in this exact JSON format:
-          {
-            "cards": [
-              { "front": "Question or Concept", "back": "Detailed answer or explanation" }
-            ]
-          }` 
-        },
-        { 
-          role: "user", 
-          content: `Here is the text to convert into flashcards:\n\n${textContent}` 
-        }
-      ],
+    // 4. Send the text to Gemini to generate flashcards
+    const prompt = `You are an expert tutor creating study materials. 
+Extract comprehensive flashcards from the provided text. 
+Cover key concepts, definitions, relationships, and edge cases. 
+Do NOT create shallow, one-word answer cards. Explanations should be clear.
+
+You MUST respond in this exact JSON format:
+{
+  "cards": [
+    { "front": "Question or Concept", "back": "Detailed answer or explanation" }
+  ]
+}
+
+Here is the text to convert into flashcards:
+
+${textContent}`;
+
+    const completion = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+      }
     });
 
     // 5. Parse the AI's JSON response back into a JavaScript object
-    const aiResponseText = completion.choices[0].message.content || '{"cards":[]}';
+    const aiResponseText = completion.text || '{"cards":[]}';
     const generatedData = JSON.parse(aiResponseText);
-    const flashcards = generatedData.cards;
+    const flashcards = generatedData.cards || [];
 
     // 6. Save the Deck and Cards to the Database
     // We use a "nested write" to create the deck and cards simultaneously
