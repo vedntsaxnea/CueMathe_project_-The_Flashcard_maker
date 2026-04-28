@@ -27,7 +27,8 @@ export default function UploadPage() {
       });
 
       if (!res.ok) {
-        throw new Error("Upload failed. Make sure the file is a valid PDF.");
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Upload failed. Make sure the file is a valid PDF.");
       }
 
       const data = await res.json();
